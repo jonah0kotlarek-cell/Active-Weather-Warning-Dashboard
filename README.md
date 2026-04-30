@@ -44,7 +44,7 @@ Displays live Tornado and Severe Thunderstorm warnings from the NWS, updating ev
 
 ### Steps
 
-**Option A — Double-click (easiest)**
+**Option A —(easiest)**
 1.Run `BUILD.bat` as Administrator 
 2. Wait ~2 minutes
 3. Your EXE files will be in the `dist/` folder
