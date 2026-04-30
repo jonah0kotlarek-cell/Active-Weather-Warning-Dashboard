@@ -1,7 +1,6 @@
 
-# GR Active Warnings
+# Active Weather Dashboard
 
-A GR2Analyst-style active severe weather warnings window for Windows.
 Displays live Tornado and Severe Thunderstorm warnings from the NWS, updating every 1.5 seconds.
 
 ---
@@ -46,15 +45,9 @@ Displays live Tornado and Severe Thunderstorm warnings from the NWS, updating ev
 ### Steps
 
 **Option A — Double-click (easiest)**
-1. Double-click `BUILD.bat`
+1.Run `BUILD.bat` as Administrator 
 2. Wait ~2 minutes
 3. Your EXE files will be in the `dist/` folder
-
-**Option B — Command line**
-```
-npm install
-npm run build
-```
 
 ### Output files in `dist/`
 - `GR Active Warnings Setup.exe` — installer (creates Start Menu + Desktop shortcut)
@@ -73,7 +66,10 @@ npm start
 ## Data Source
 NWS Public API — `api.weather.gov`  
 No API key required. Data is public domain.
-
+warnings.cod.edu
+https://www.spc.noaa.gov/products/md/
+https://www.spc.noaa.gov/products/watch/
+https://www.spotternetwork.org/pages/feeds/gibson-ridge
 ---
 
 ## Notes
