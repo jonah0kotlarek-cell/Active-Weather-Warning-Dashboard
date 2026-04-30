@@ -1,0 +1,32 @@
+{
+  "scripts": {
+    "start": "electron src/main.js",
+    "build": "electron-builder"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.yourname.gr-active-warnings",
+    "productName": "GR Active Warnings",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "YOUR_GITHUB_USERNAME",
+        "repo": "YOUR_REPO_NAME"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/Icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  }
+}
