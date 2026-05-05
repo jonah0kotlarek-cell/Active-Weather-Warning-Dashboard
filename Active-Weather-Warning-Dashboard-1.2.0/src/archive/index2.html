@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.weather.gov;">
+  <title>GR Active Warnings</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Custom titlebar (since frame:false) -->
+  <div id="titlebar">
+    <div id="titlebar-drag">
+      <span id="tb-dot"></span>
+      <span id="tb-title">GR ACTIVE WARNINGS</span>
+    </div>
+    <div id="tb-controls">
+      <button id="btn-ontop" title="Toggle Always on Top">📌</button>
+      <button id="btn-min" title="Minimize">─</button>
+      <button id="btn-close" title="Close">✕</button>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="statusbar">
+    <div id="status-left">
+      <span id="status-led"></span>
+      <span id="status-text">CONNECTING...</span>
+    </div>
+    <div id="status-right">
+      <span id="status-time"></span>
+    </div>
+  </div>
+
+  <!-- Warning list -->
+  <div id="warn-list"></div>
+
+  <!-- Footer -->
+  <div id="footer">
+    <span>SRC: api.weather.gov / NWS</span>
+    <span id="footer-count">0 ACTIVE · 1.5s</span>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

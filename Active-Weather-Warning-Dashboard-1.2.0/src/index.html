@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+ <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; connect-src https://api.weather.gov https://www.spc.noaa.gov https://www.spotternetwork.org https://weather.cod.edu https://*.basemaps.cartocdn.com https://www.spc.noaa.gov; img-src 'self' data: https://*.basemaps.cartocdn.com; media-src 'self' file: data:;">
+  <title>GR Active Warnings</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <!-- Titlebar -->
+  <div id="titlebar">
+    <div id="titlebar-drag">
+      <span id="tb-dot"></span>
+      <span id="tb-title">GR ACTIVE WARNINGS</span>
+    </div>
+    <div id="tb-controls">
+      <button id="btn-ontop" title="Toggle Always on Top">📌</button>
+      <button id="btn-min" title="Minimize">─</button>
+      <button id="btn-close" title="Close">✕</button>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="statusbar">
+    <div id="status-left">
+      <span id="status-led"></span>
+      <span id="status-text">CONNECTING...</span>
+    </div>
+    <div id="status-right">
+      <span id="status-time"></span>
+    </div>
+  </div>
+
+  <div id="main-layout">
+    <!-- Sidebar -->
+    <div id="tabbar">
+      <button class="tab active" data-tab="warnings">
+        <span class="tab-label">WARNINGS</span>
+        <span class="tab-badge" id="badge-warnings">0</span>
+      </button>
+      <button class="tab" data-tab="watches">
+        <span class="tab-label">WATCHES</span>
+        <span class="tab-badge" id="badge-watches">0</span>
+      </button>
+      <button class="tab" data-tab="mds">
+        <span class="tab-label">MDs</span>
+        <span class="tab-badge" id="badge-mds">0</span>
+      </button>
+      <button class="tab" data-tab="reports">
+        <span class="tab-label">SN</span>
+        <span class="tab-badge" id="badge-reports">0</span>
+      </button>
+      <button class="tab" data-tab="map">
+        <span class="tab-label">MAP</span>
+        <span class="tab-badge" id="badge-map">◉</span>
+      </button>
+      <button class="tab" data-tab="dev">
+        <span class="tab-label">DEV</span>
+        <span class="tab-badge" id="badge-dev">🔒</span>
+      </button>
+    </div>
+
+   <!-- Panels -->
+    <div id="content-area">
+      <div id="panel-warnings" class="panel active">
+        <div id="warn-empty" class="item-list" style="display:none;"></div>
+        <div id="warn-columns" class="warning-columns">
+          <div class="warning-column tor-column">
+            <div class="warning-column-header tor-header">TOR <span id="tor-count">0</span></div>
+            <div id="tor-warn-list" class="item-list warning-sublist"></div>
+          </div>
+          <div class="warning-column svr-column">
+            <div class="warning-column-header svr-header">SVR <span id="svr-count">0</span></div>
+            <div id="svr-warn-list" class="item-list warning-sublist"></div>
+          </div>
+        </div>
+      </div>
+      <div id="panel-watches" class="panel">
+        <div id="watch-list" class="item-list"></div>
+      </div>
+      <div id="panel-mds" class="panel">
+        <div id="md-list" class="item-list"></div>
+      </div>
+      <div id="panel-reports" class="panel">
+        <div id="report-list" class="item-list"></div>
+      </div>
+      <div id="panel-map" class="panel">
+        <div id="map-container"></div>
+      </div>
+      <div id="panel-dev" class="panel">
+        <div id="dev-list" class="item-list"></div>
+      </div>
+    </div>
+
+  <!-- Footer -->
+  <div id="footer">
+    <span>SRC: warnings.cod.edu / SPC</span>
+    <span id="footer-count">0 ACTIVE · 1.5s</span>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="renderer.js"></script>
+  <script src="map.js"></script>
+</body>
+</html>
