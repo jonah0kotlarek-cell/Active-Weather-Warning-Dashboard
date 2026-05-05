@@ -1,0 +1,11 @@
+INSTALL/Update INSTRUCTIONS:
+0.5. Go to: https://nodejs.org/ and install most recent version
+1. Extract File folder to Your Computer
+2. Run Build.Bat as an administrator (left click on it once, then right click, left click "Run as administrator) 
+3. A new window will open, This is the installer
+4. Let installer run and once the installer says " Press any Key to continue . . . " 
+5. Press any key then open to the folder named "dist" 
+6. Inside the folder you will see 2 application files double click on "GR Ative Warnings 1.0.0", NOT 'GR Active Warnings Setup 1.0.0"
+
+After Initial setup You only have to Go to "dist" and open the application
+Note: When a new version is released You will have to repeat install steps after downloading from Google drive folder
