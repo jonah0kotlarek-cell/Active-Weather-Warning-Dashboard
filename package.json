@@ -1,0 +1,46 @@
+{
+  "name": "gr-active-warnings",
+  "version": "1.2.1",
+  "description": "Active weather warning dashboard for GRLevelX-style usage.",
+  "author": "Jonah Kotlarek",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron src/main.js",
+    "build": "electron-builder --win --x64",
+    "build-portable": "electron-builder --win portable --x64"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.jonahkotlarek.gr-active-warnings",
+    "productName": "GR Active Warnings",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "assets/**/*", "package.json"],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jonah0kotlarek-cell",
+        "repo": "Active-Weather-Warning-Dashboard"
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/Icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GR Active Warnings"
+    }
+  }
+}
