@@ -22,7 +22,7 @@ const WATCH_CFG = {
     pds:  { label: 'TOR WATCH PDS', color: '#FF00FF', bg: '#1a001a', border: '#FF00FF', rank: 9 },
   },
   'Severe Thunderstorm Watch': {
-    base: { label: 'SVR WATCH', color: '#00AAFF', bg: '#001a2a', border: '#00AAFF', rank: 3 },
+    base: { label: 'SVR WATCH', color: '#ff0000', bg: '#001a2a', border: '#ff0000', rank: 3 },
   },
 };
 
@@ -65,6 +65,8 @@ let reportRadarLoading = new Set();
 let soundedWarningKeys = new Set();
 let soundedReportIds = new Set();
 let warningAudioPrimed = false;
+let easEnabled = true;
+let weaEnabled = true;
 // ── Map state ────────────────────────────────────────────────────
 let mapInstance = null;
 let mapLayers = [];
@@ -689,7 +691,14 @@ async function fetchWatches() {
     const controller = new AbortController();
     const watchTimeout = setTimeout(() => controller.abort(), 8000);
     const data = await fetchWithPagination(WATCH_URL, controller.signal).finally(() => clearTimeout(watchTimeout));
-    const parsed = parseWatches(data);
+    const allParsed = parseWatches(data);
+const seenNumbers = new Set();
+const parsed = allParsed.filter(w => {
+  const key = w.watchNumber || w.id;
+  if (seenNumbers.has(key)) return false;
+  seenNumbers.add(key);
+  return true;
+});
     watches = parsed.map(w => {
       const existing = previousById.get(w.id) || (w.watchNumber ? previousByNumber.get(w.watchNumber) : null);
       const variant = existing?.variant === 'pds' && w.type === 'Tornado Watch' ? 'pds' : w.variant;
@@ -884,10 +893,7 @@ function warningSoundSignature(warning) {
   return [
     warning.type,
     warning.variant,
-    warning.area,
-    warning.headline,
     warning.issued instanceof Date ? warning.issued.toISOString() : String(warning.issued || ''),
-    warning.expires instanceof Date ? warning.expires.toISOString() : String(warning.expires || ''),
   ].join('|');
 }
 
@@ -916,14 +922,14 @@ function playSpecialWarningSounds(previousWarnings, nextWarnings) {
     if (soundedWarningKeys.has(soundKey)) continue;
     const isNewArrival = !previous;
     const upgradedToTarget = previous && previous.variant !== warning.variant;
-    const issuedRecently = (Date.now() - warning.issued.getTime()) <= 120_000;
+    const issuedRecently = (Date.now() - warning.issued.getTime()) <= 300_000;
     if ((!isNewArrival && !upgradedToTarget) || !issuedRecently) continue;
-    if (shouldPlayEasForWarning(warning)) {
+    if (shouldPlayEasForWarning(warning) && easEnabled) {
       soundedWarningKeys.add(soundKey);
       playAudio(TORE_SOUND_URL);
       continue;
     }
-    if (shouldPlayWeaForWarning(warning)) {
+    if (shouldPlayWeaForWarning(warning) && weaEnabled) {
       soundedWarningKeys.add(soundKey);
       playAudio(WEA_SOUND_URL);
     }
@@ -1128,7 +1134,7 @@ function queueReportRadarFetch(report) {
 }
 
 function warningRenderHash() {
-  return warnings.map(w => `${w.id}:${w.radarId || ''}:${w.isNew ? 1 : 0}:${expanded['w_' + w.id] ? 1 : 0}`).join(',');
+  return warnings.map(w => `${w.id}:${w.variant}:${w.radarId || ''}:${w.isNew ? 1 : 0}:${expanded['w_' + w.id] ? 1 : 0}`).join(',');
 }
 
 function watchRenderHash() {
@@ -1559,6 +1565,21 @@ btnOnTop.addEventListener('click', () => {
 });
 btnOnTop.classList.add('active');
 
+const btnEas = document.getElementById('btn-eas');
+btnEas.classList.add('active');
+btnEas.addEventListener('click', () => {
+  easEnabled = !easEnabled;
+  btnEas.classList.toggle('active', easEnabled);
+  btnEas.textContent = easEnabled ? '🔊 EAS' : '🔇 EAS';
+});
+
+const btnWea = document.getElementById('btn-wea');
+btnWea.classList.add('active');
+btnWea.addEventListener('click', () => {
+  weaEnabled = !weaEnabled;
+  btnWea.classList.toggle('active', weaEnabled);
+  btnWea.textContent = weaEnabled ? '🔊 WEA' : '🔇 WEA';
+});
 // ── Dev tab ──────────────────────────────────────────────────────
 let devUnlocked = false;
 const DEV_PASSWORD = 'DEVTEST26';
@@ -1692,11 +1713,11 @@ function makeTestWarning(kind) {
 }
 
 function playTestWarningSounds(warning) {
-  if (shouldPlayEasForWarning(warning)) {
+  if (shouldPlayEasForWarning(warning) && easEnabled) {
     playAudio(TORE_SOUND_URL);
     return;
   }
-  if (shouldPlayWeaForWarning(warning)) {
+  if (shouldPlayWeaForWarning(warning) && weaEnabled) {
     playAudio(WEA_SOUND_URL);
   }
 }

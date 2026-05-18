@@ -566,6 +566,27 @@ function drawWarningPolygon(w) {
 function drawWatchPolygon(w) {
   const color = (w.cfg && w.cfg.color) || '#FFFF00';
   if (!w.watchNumber) return;
+  const cacheKey = 'watch_' + w.watchNumber;
+
+  // Already cached — draw directly
+  if (polygonCache.has(cacheKey)) {
+    const cached = polygonCache.get(cacheKey);
+    if (cached) {
+      const layer = L.geoJSON(cached, {
+        style: { color: color, fillColor: color, fillOpacity: 0.12, weight: 2, dashArray: '6,4', opacity: 0.9 },
+        onEachFeature: function(feature, lyr) {
+          lyr.bindPopup(makePopup(color, (w.cfg && w.cfg.label) || w.type || 'Watch', w.area || '', 'Double-click to open in tab'));
+          lyr.on('dblclick', function() { jumpToTab('watches', w); });
+        },
+      });
+      addToGroup('watches', layer);
+    }
+    return;
+  }
+
+  // Mark as in-progress
+  polygonCache.set(cacheKey, null);
+
   const num = String(w.watchNumber).padStart(4, '0');
   fetch('https://www.spc.noaa.gov/products/watch/ww' + num + '.html', {
     headers: { 'User-Agent': 'GR-Warnings-Desktop/1.0' },
@@ -574,21 +595,18 @@ function drawWatchPolygon(w) {
     .then(function(html) {
       const geojson = parseSpcLatLon(html);
       if (!geojson) throw new Error('no coords');
+      polygonCache.set(cacheKey, geojson);
       const layer = L.geoJSON(geojson, {
         style: { color: color, fillColor: color, fillOpacity: 0.12, weight: 2, dashArray: '6,4', opacity: 0.9 },
         onEachFeature: function(feature, lyr) {
-          lyr.bindPopup(makePopup(
-            color,
-            (w.cfg && w.cfg.label) || w.type || 'Watch',
-            w.area || '',
-            'Double-click to open in tab'
-          ));
+          lyr.bindPopup(makePopup(color, (w.cfg && w.cfg.label) || w.type || 'Watch', w.area || '', 'Double-click to open in tab'));
           lyr.on('dblclick', function() { jumpToTab('watches', w); });
         },
       });
       addToGroup('watches', layer);
     })
     .catch(function(e) {
+      polygonCache.delete(cacheKey);
       console.warn('Watch polygon fetch failed:', e.message);
     });
 }
