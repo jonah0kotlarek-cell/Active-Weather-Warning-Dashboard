@@ -95,3 +95,36 @@ ipcMain.on('win-toggle-ontop', (event, val) => {
 ipcMain.on('update-install-now', () => {
   autoUpdater.quitAndInstall();
 });
+
+function isAllowedWeatherUrl(url) {
+  return typeof url === 'string' && /^https:\/\/(weather\.cod\.edu|climate\.cod\.edu|www\.pivotalweather\.com|pivotalweather\.com|nomads\.ncep\.noaa\.gov|raw\.githubusercontent\.com)\//i.test(url);
+}
+
+ipcMain.on('open-external-url', (event, url) => {
+  if (!isAllowedWeatherUrl(url)) return;
+  shell.openExternal(url);
+});
+
+ipcMain.handle('fetch-allowed-url', async (event, url) => {
+  if (!isAllowedWeatherUrl(url)) throw new Error('URL not allowed');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.text();
+});
+
+ipcMain.handle('fetch-allowed-data-url', async (event, url) => {
+  if (!isAllowedWeatherUrl(url)) throw new Error('URL not allowed');
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const contentType = res.headers.get('content-type') || 'image/png';
+  const bytes = Buffer.from(await res.arrayBuffer());
+  return `data:${contentType};base64,${bytes.toString('base64')}`;
+});
+
+ipcMain.handle('fetch-allowed-buffer', async (event, url) => {
+  if (!isAllowedWeatherUrl(url)) throw new Error('URL not allowed');
+  const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache, no-store' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  return bytes.toString('base64');
+});
