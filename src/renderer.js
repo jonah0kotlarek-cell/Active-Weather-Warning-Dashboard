@@ -631,6 +631,19 @@ async function fetchAll() {
   renderAll();
 }
 
+// Fast path: only warnings + watches, renders immediately on completion
+// without waiting for MDs, spotter reports, or outlooks
+async function fetchFast() {
+  try {
+    await Promise.all([fetchWarnings(), fetchWatches()]);
+    lastUpdate  = new Date();
+    statusState = 'live';
+    renderAll();
+  } catch(e) {
+    // silent — full fetchAll will catch and surface errors
+  }
+}
+
 async function fetchWithPagination(startUrl, signal) {
   let allFeatures = [];
   let url = startUrl;
@@ -754,6 +767,12 @@ async function fetchWarnings() {
     knownWarnIds = new Set(merged.map(w => w.id));
 
     playSpecialWarningSounds(previousWarnings, warnings);
+
+    // Render warnings immediately — don't wait for MDs/spotter/outlooks
+    updateStatusBar();
+    updateBadges();
+    if (activeTab === 'warnings') renderWarnings();
+    else if (activeTab === 'map') refreshMap();
   } catch (e) {
     statusState = 'error';
     errorMsg = e?.message || String(e);
@@ -1044,55 +1063,34 @@ function shouldPlayWeaForWarning(warning) {
 function playSpecialWarningSounds(previousWarnings, nextWarnings) {
   if (!warningAudioPrimed) {
     warningAudioPrimed = true;
-    // On first load, mark everything as already sounded so we don't blast on startup
     soundedWarningKeys = new Set(nextWarnings.map(warningSoundSignature));
     return;
   }
   const activeSoundKeys = new Set();
   for (const warning of nextWarnings) {
+    const previous = previousWarnings.get(warning.id);
     const soundKey = warningSoundSignature(warning);
     activeSoundKeys.add(soundKey);
-
-    // Already played this exact type+variant+issued combo
     if (soundedWarningKeys.has(soundKey)) continue;
-
-    // Look up previous by ID first, then by identity key as fallback
-    const previous = previousWarnings.get(warning.id)
-      || [...previousWarnings.values()].find(p => warningIdentityKey(p) === warningIdentityKey(warning));
-
-    const isNewArrival    = !previous;
-    const upgradedVariant = previous && previous.variant !== warning.variant;
-
-    // Extended window: 20 min for new arrivals, 30 min for upgrades
-    // PDS upgrades often come in well after the original issued time
-    const ageMs = Date.now() - warning.issued.getTime();
-    const isNewArrivalRecent = isNewArrival && ageMs <= 20 * 60_000;
-    const isUpgradeRecent    = upgradedVariant && ageMs <= 30 * 60_000;
-
-    if (!isNewArrivalRecent && !isUpgradeRecent) {
-      console.log(`[SOUND] Skip ${warning.variant} ${warning.area} — age ${Math.round(ageMs/1000)}s, isNew=${isNewArrival}, upgraded=${upgradedVariant}`);
-      soundedWarningKeys.add(soundKey); // mark so we don't keep checking
-      continue;
-    }
-
+    const isNewArrival = !previous;
+    const upgradedToTarget = previous && previous.variant !== warning.variant;
+    const issuedRecently = (Date.now() - warning.issued.getTime()) <= 300_000;
+    if ((!isNewArrival && !upgradedToTarget) || !issuedRecently) continue;
     if (shouldPlayEasForWarning(warning) && easEnabled) {
-      console.log(`[SOUND] EAS PLAYING — ${warning.variant} ${warning.area} (${isNewArrival ? 'new' : 'upgrade from ' + previous?.variant})`);
+      soundedWarningKeys.add(soundKey);
       playAudio(TORE_SOUND_URL);
-      soundedWarningKeys.add(soundKey);
       continue;
     }
-
     if (shouldPlayWeaForWarning(warning) && weaEnabled) {
-      console.log(`[SOUND] WEA PLAYING — ${warning.variant} ${warning.area}`);
-      playAudio(WEA_SOUND_URL);
+      console.log('WEA triggered for:', warning.area, warning.variant);
       soundedWarningKeys.add(soundKey);
-      continue;
+      playAudio(WEA_SOUND_URL);
+    } else if (shouldPlayWeaForWarning(warning) && !weaEnabled) {
+      console.log('WEA suppressed (toggle off):', warning.area);
+    } else {
+      console.log('WEA not triggered:', warning.area, warning.variant, 'soundKey already seen:', soundedWarningKeys.has(soundKey));
     }
-
-    // Not a special sound warning — mark it so we stop checking
-    soundedWarningKeys.add(soundKey);
   }
-  // Only clean up keys that are no longer active at all
   soundedWarningKeys = new Set([...soundedWarningKeys].filter(key => activeSoundKeys.has(key)));
 }
 
@@ -1395,9 +1393,8 @@ async function fetchCodWarningMeta(warning) {
     if (!changed) return;
     const updatedWarning = { ...current, ...meta };
     if (current.type === 'Tornado Warning' && updatedWarning.type === 'Tornado Warning' && !shouldPlayEasForWarning(current) && shouldPlayEasForWarning(updatedWarning) && easEnabled) {
-      console.log(`[SOUND] EAS upgrade via COD meta — ${current.variant} → ${updatedWarning.variant} ${current.area}`);
-      playAudio(TORE_SOUND_URL);
       soundedWarningKeys.add(warningSoundSignature(updatedWarning));
+      playAudio(TORE_SOUND_URL);
     }
     Object.assign(current, meta, { codMetaApplied: current.type === 'Tornado Warning' });
     lastWarnHash = '';
@@ -3055,8 +3052,19 @@ function clearTestWarnings() {
 // ── Boot ─────────────────────────────────────────────────────────
 window.addEventListener('keydown', handleSoundTestHotkeys);
 renderAll();
-fetchAll();
-setInterval(fetchAll, 1500);
+
+// Stagger startup: fast fetch immediately, then full fetch 500ms later
+// so warnings show up before slower endpoints finish
+fetchFast();
+setTimeout(fetchAll, 500);
+
+// Fast loop: warnings + watches only, every 1 second
+setInterval(fetchFast, 1000);
+
+// Full loop: everything including MDs, spotter, outlooks every 10s
+// (these don't need sub-second updates)
+setInterval(fetchAll, 10_000);
+
 setInterval(() => {
   if (warnings.length > 0 || watches.length > 0 || mds.length > 0 || spotterReports.length > 0) renderAll();
 }, 30_000);
