@@ -1,7 +1,7 @@
 {
-  "name": "gr-active-warnings",
-  "version": "1.3.1",
-  "description": "Active weather warning dashboard for GRLevelX-style usage.",
+  "name": "Active-Weather-Warning=Manager",
+  "version": "1.3.2",
+  "description": "Active weather warning Manager"
   "author": "Jonah Kotlarek",
   "main": "src/main.js",
   "scripts": {
@@ -59,7 +59,7 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Active Weather Warnings"
+      "shortcutName": "Active Weather Warning Dashboard"
     }
   }
 }

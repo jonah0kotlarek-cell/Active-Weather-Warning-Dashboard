@@ -631,19 +631,6 @@ async function fetchAll() {
   renderAll();
 }
 
-// Fast path: only warnings + watches, renders immediately on completion
-// without waiting for MDs, spotter reports, or outlooks
-async function fetchFast() {
-  try {
-    await Promise.all([fetchWarnings(), fetchWatches()]);
-    lastUpdate  = new Date();
-    statusState = 'live';
-    renderAll();
-  } catch(e) {
-    // silent — full fetchAll will catch and surface errors
-  }
-}
-
 async function fetchWithPagination(startUrl, signal) {
   let allFeatures = [];
   let url = startUrl;
@@ -767,12 +754,6 @@ async function fetchWarnings() {
     knownWarnIds = new Set(merged.map(w => w.id));
 
     playSpecialWarningSounds(previousWarnings, warnings);
-
-    // Render warnings immediately — don't wait for MDs/spotter/outlooks
-    updateStatusBar();
-    updateBadges();
-    if (activeTab === 'warnings') renderWarnings();
-    else if (activeTab === 'map') refreshMap();
   } catch (e) {
     statusState = 'error';
     errorMsg = e?.message || String(e);
@@ -1518,7 +1499,7 @@ function buildWarningRow(w) {
           ${w.windGust     ? `<span class="tag tag-wind">WIND ${esc(w.windGust)} MPH</span>` : ''}
           ${w.damageThreat ? `<span class="tag tag-damage">${esc(w.damageThreat)}</span>` : ''}
           ${w.torPossible  ? `<span class="tag tag-tor">TOR POSSIBLE</span>` : ''}
-          ${w.torDetect    ? `<span class="tag tag-tor">${esc(w.torDetect)}</span>` : ''}
+          ${w.torDetect && !/POSSIBLE/i.test(w.torDetect) ? `<span class="tag tag-tor">${esc(w.torDetect)}</span>` : ''}
         </div>
         <div class="timebar-labels">
           <span>ISS ${esc(fmtTime(w.issued))}</span>
@@ -3052,19 +3033,8 @@ function clearTestWarnings() {
 // ── Boot ─────────────────────────────────────────────────────────
 window.addEventListener('keydown', handleSoundTestHotkeys);
 renderAll();
-
-// Stagger startup: fast fetch immediately, then full fetch 500ms later
-// so warnings show up before slower endpoints finish
-fetchFast();
-setTimeout(fetchAll, 500);
-
-// Fast loop: warnings + watches only, every 1 second
-setInterval(fetchFast, 1000);
-
-// Full loop: everything including MDs, spotter, outlooks every 10s
-// (these don't need sub-second updates)
-setInterval(fetchAll, 10_000);
-
+fetchAll();
+setInterval(fetchAll, 1500);
 setInterval(() => {
   if (warnings.length > 0 || watches.length > 0 || mds.length > 0 || spotterReports.length > 0) renderAll();
 }, 30_000);
