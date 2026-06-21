@@ -652,9 +652,16 @@ function preservePreviousWarningMeta(warning, previous) {
   const next = { ...warning };
 
   if (previous.codMetaApplied && warning.source === 'cod' && warning.type === 'Tornado Warning') {
+    // Only carry forward the previous variant if the warning hasn't been reissued.
+    // A new issued time means NWS pushed a fresh product — the old COD meta tags
+    // are stale and should not override what the current cycle says.
+    const sameIssuance = previous.issued instanceof Date && warning.issued instanceof Date
+      && Math.abs(previous.issued.getTime() - warning.issued.getTime()) < 60_000;
+
     const previousRank = CFG[warning.type]?.[previous.variant]?.rank || previous.rank || 0;
     const nextRank = CFG[warning.type]?.[next.variant]?.rank || next.rank || 0;
-    if (previousRank >= nextRank) {
+
+    if (sameIssuance && previousRank >= nextRank) {
       next.variant = previous.variant;
       next.cfg = CFG[warning.type]?.[previous.variant] || previous.cfg || next.cfg;
       next.rank = next.cfg?.rank || previous.rank || next.rank;
