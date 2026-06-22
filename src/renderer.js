@@ -81,7 +81,7 @@ const polygonCache = new Map();
 let mapBounds = [];
 const audioPlayers = new Map();
 const warningRadarCache = new Map();
-const codWarningProductCache = new Map();
+const codWarningProductCache = new Map(); // { url → { text, fetchedAt } }
 
 // ── Classification ──────────────────────────────────────────────
 function tagsFromProps(props) {
@@ -652,14 +652,10 @@ function preservePreviousWarningMeta(warning, previous) {
   const next = { ...warning };
 
   if (previous.codMetaApplied && warning.source === 'cod' && warning.type === 'Tornado Warning') {
-    // Only carry forward the previous variant if the warning hasn't been reissued.
-    // A new issued time means NWS pushed a fresh product — old COD meta tags are stale.
     const sameIssuance = previous.issued instanceof Date && warning.issued instanceof Date
       && Math.abs(previous.issued.getTime() - warning.issued.getTime()) < 60_000;
-
     const previousRank = CFG[warning.type]?.[previous.variant]?.rank || previous.rank || 0;
     const nextRank = CFG[warning.type]?.[next.variant]?.rank || next.rank || 0;
-
     if (sameIssuance && previousRank >= nextRank) {
       next.variant = previous.variant;
       next.cfg = CFG[warning.type]?.[previous.variant] || previous.cfg || next.cfg;
@@ -728,9 +724,6 @@ async function fetchWarnings() {
     const supplementalNwsWarnings = nwsWarnings.filter(w => !matchedNwsWarnings.has(w.id));
     const rawMerged = [...enrichedCodWarnings, ...supplementalNwsWarnings];
 
-    // Final dedup pass — COD entries take priority over NWS duplicates
-    // since they're already enriched. Key by identity so reissuances with
-    // different IDs but same office/area/time still collapse to one entry.
     const dedupMap = new Map();
     for (const w of rawMerged) {
       const key = warningIdentityKey(w);
@@ -738,7 +731,6 @@ async function fetchWarnings() {
       if (!existing) {
         dedupMap.set(key, w);
       } else {
-        // Prefer COD source; otherwise prefer higher rank
         if (w.source === 'cod' && existing.source !== 'cod') {
           dedupMap.set(key, w);
         } else if (w.source === existing.source && (w.rank || 0) > (existing.rank || 0)) {
@@ -1382,11 +1374,13 @@ async function fetchCodWarningMeta(warning) {
   codWarningMetaLoading.add(warning.id);
   try {
     const texts = await Promise.all(urls.map(async url => {
-      if (codWarningProductCache.has(url)) return codWarningProductCache.get(url);
+      const cached = codWarningProductCache.get(url);
+      // Cache for 90 seconds — short enough to catch PDS/Emergency upgrades
+      if (cached && (Date.now() - cached.fetchedAt) < 30_000) return cached.text;
       const res = await fetch(url, { headers: { 'User-Agent': 'GR-Warnings-Desktop/1.0' } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      codWarningProductCache.set(url, text);
+      codWarningProductCache.set(url, { text, fetchedAt: Date.now() });
       return text;
     }));
     const meta = parseCodWarningProductMeta(texts.join('\n'), warning);
