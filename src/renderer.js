@@ -653,8 +653,7 @@ function preservePreviousWarningMeta(warning, previous) {
 
   if (previous.codMetaApplied && warning.source === 'cod' && warning.type === 'Tornado Warning') {
     // Only carry forward the previous variant if the warning hasn't been reissued.
-    // A new issued time means NWS pushed a fresh product — the old COD meta tags
-    // are stale and should not override what the current cycle says.
+    // A new issued time means NWS pushed a fresh product — old COD meta tags are stale.
     const sameIssuance = previous.issued instanceof Date && warning.issued instanceof Date
       && Math.abs(previous.issued.getTime() - warning.issued.getTime()) < 60_000;
 
@@ -727,7 +726,27 @@ async function fetchWarnings() {
       }
     }
     const supplementalNwsWarnings = nwsWarnings.filter(w => !matchedNwsWarnings.has(w.id));
-    const merged = [...enrichedCodWarnings, ...supplementalNwsWarnings];
+    const rawMerged = [...enrichedCodWarnings, ...supplementalNwsWarnings];
+
+    // Final dedup pass — COD entries take priority over NWS duplicates
+    // since they're already enriched. Key by identity so reissuances with
+    // different IDs but same office/area/time still collapse to one entry.
+    const dedupMap = new Map();
+    for (const w of rawMerged) {
+      const key = warningIdentityKey(w);
+      const existing = dedupMap.get(key);
+      if (!existing) {
+        dedupMap.set(key, w);
+      } else {
+        // Prefer COD source; otherwise prefer higher rank
+        if (w.source === 'cod' && existing.source !== 'cod') {
+          dedupMap.set(key, w);
+        } else if (w.source === existing.source && (w.rank || 0) > (existing.rank || 0)) {
+          dedupMap.set(key, w);
+        }
+      }
+    }
+    const merged = [...dedupMap.values()];
 
     // Re-inject test warnings; skip any whose ID now exists in live data
     const liveIds = new Set(merged.map(w => w.id));
